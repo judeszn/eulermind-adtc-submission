@@ -85,6 +85,12 @@ architecture** (macOS/arm64 → Ubuntu/x86_64, sha256-equal reports; run
 28673053751). This submission repo carries its own workflow that
 re-runs the official profiler on every push.
 
+### Try it yourself
+
+`python3 -m app.local_demo` from this repository root starts the
+offline demo (stdlib only); both registered test prompts are built-in
+example buttons and certify end-to-end.
+
 ## 3. Constraints
 
 Designed against the ADTC Standard Laptop, measured under it:
@@ -104,7 +110,8 @@ All numbers from the **official adtc-profiler, unmodified**, on x86
 
 | Metric | Value | Source run |
 |---|---|---|
-| Generation throughput | 15.02 tok/s | 28683815170 |
+| Generation throughput (selection scan) | 15.02 tok/s | 28683815170 |
+| Generation throughput (checked-in baseline re-run) | 15.68 tok/s | 28691529653 — run-to-run variance well inside the audit's ±25% tolerance |
 | First-token latency (512-tok prompt) | 16.8 s | 28683815170 |
 | Peak RSS | 1,700 MB | 28683815170 |
 | GSM8K exact-match (flexible, n=50, seed 42) | 68% | 28684426883 |

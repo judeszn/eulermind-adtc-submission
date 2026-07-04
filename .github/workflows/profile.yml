@@ -1,0 +1,51 @@
+name: Official ADTC Profiler
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  profile:
+    name: adtc-profiler participant run (clean x86 runner)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install llama.cpp (prebuilt ubuntu-x64 release binaries)
+        run: |
+          set -euo pipefail
+          URL=$(curl -s https://api.github.com/repos/ggml-org/llama.cpp/releases/latest \
+            | python3 -c "import json,sys; assets=json.load(sys.stdin)['assets']; print(next(a['browser_download_url'] for a in assets if a['name'].endswith('-bin-ubuntu-x64.tar.gz')))")
+          curl -sL "$URL" -o llama.tar.gz
+          mkdir -p llama-dist && tar -xzf llama.tar.gz -C llama-dist
+          BENCH=$(find llama-dist -name llama-bench -type f | head -1)
+          BENCH_DIR=$(cd "$(dirname "$BENCH")" && pwd)
+          chmod +x "$BENCH_DIR"/llama-bench
+          echo "$BENCH_DIR" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$BENCH_DIR:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+      - name: Install official adtc-profiler
+        run: pip install --quiet "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
+
+      - name: Download model weights
+        run: bash download_model.sh
+
+      - name: Run official profiler (participant mode)
+        run: |
+          adtc-profiler run --submission . --mode participant \
+            --output submission.json --skip-accuracy
+          cat submission.json
+
+      - name: Upload submission.json
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: submission-json
+          path: submission.json

@@ -1,0 +1,6 @@
+*.gguf
+model/
+*.partial
+submission_local*.json
+__pycache__/
+!model/.gitkeep

@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0.0",
+  "profiler_version": "adtc-profiler 0.1.0",
+  "submission": {
+    "team_id": "REPLACE-WITH-ADTF-TEAM-ID",
+    "domain": "math_scientific_reasoning",
+    "language_scope": [
+      "en"
+    ],
+    "african_alpha_claim": true,
+    "budget_laptop_claim": true,
+    "submitter": {
+      "name": "Boluwatife Faturoti",
+      "email": "faturotijude@gmail.com",
+      "github_handle": "judeszn"
+    },
+    "cross_disciplinary_pairing": {
+      "discipline": "operations_research",
+      "load_bearing": true,
+      "description": "EulerMind pairs a math-specialized model with deterministic operations-research tooling for African SME planning: production mixes, staff-to-site assignment, and resource allocation are formalized from plain language, solved exactly, and every answer is certified by an independently-written checker before it reaches the user."
+    },
+    "test_prompts": [
+      {
+        "prompt_id": "tp_001",
+        "prompt": "A furniture workshop in Lagos makes two products: chairs and tables. Each chair needs 3 hours of carpentry and 2 hours of finishing; each table needs 5 hours of carpentry and 3 hours of finishing. The workshop has 240 carpentry hours and 150 finishing hours available this month. Each chair earns N4,500 profit and each table N7,000. How many chairs and tables should the workshop make to maximize profit, and what is the maximum profit? Show your reasoning and verify that your plan stays within both labour limits."
+      },
+      {
+        "prompt_id": "tp_002",
+        "prompt": "A community health programme in Nairobi must assign four volunteers - Amina, Baraka, Chausiku, and David - to four clinics: Kibera, Kasarani, Embakasi, and Westlands, with exactly one volunteer per clinic. Amina cannot be assigned to Kibera. Baraka must be assigned to either Kasarani or Embakasi. If Chausiku is assigned to Kasarani, then David must be assigned to Westlands. David cannot be assigned to Embakasi. Find a valid assignment of volunteers to clinics, or explain clearly why none exists, and check your answer against every constraint."
+      }
+    ],
+    "model": {
+      "name": "Qwen2.5-Math-1.5B-Instruct-Q4_K_M",
+      "runtime": "llama.cpp",
+      "quantization": "GGUF Q4_K_M",
+      "parameters_estimate": "1.5B",
+      "packaging": "binary_bundle"
+    }
+  },
+  "environment": {
+    "measured_on": "participant_laptop",
+    "cpu_model": "AMD EPYC 7763 64-Core Processor",
+    "ram_gb": 7.8,
+    "gpu": "none",
+    "os": "Ubuntu 24.04.4 LTS"
+  },
+  "throughput": {
+    "tokens_per_second_generation": 15.68,
+    "first_token_latency_ms": 16608.24,
+    "prompt_tokens": 512,
+    "generated_tokens": 128
+  },
+  "memory": {
+    "peak_rss_mb": 1699.48,
+    "steady_state_rss_mb": 1638.78,
+    "peak_vms_mb": 2171.23
+  },
+  "accuracy": [],
+  "cpu_thermal": {
+    "cpu_percent_p99": 62.4,
+    "core_temp_c_peak": null,
+    "throttled": false
+  },
+  "reproducibility": {
+    "git_commit_sha": "0b508fb8b677",
+    "docker_image_digest": "unknown",
+    "random_seed": 42
+  },
+  "model_info": {
+    "params_count": null,
+    "context_length": 4096,
+    "architecture": "qwen2",
+    "claimed_params_estimate": "1.5B",
+    "params_match": true
+  }
+}

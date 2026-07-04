@@ -38,7 +38,7 @@ same llama-server configuration, zero per-model tuning):
 | DeepSeek-R1-Distill-Qwen-1.5B | 66% | 17.34 | 1,817 MB |
 | Qwen2.5-1.5B-Instruct | 52% | 15.85 | 1,825 MB |
 
-(Frontier scan: EulerMind repo, CI run 28683815170; accuracy: run
+(Frontier scan: EulerMind repo, CI run [28683815170](https://github.com/judeszn/EulerMind/actions/runs/28683815170); accuracy: run
 28684426883. The selection rule was committed as executable code
 *before* any accuracy result existed.) The math-specialized model beats
 its same-family general sibling by +16 points on GSM8K at essentially
@@ -110,13 +110,13 @@ All numbers from the **official adtc-profiler, unmodified**, on x86
 
 | Metric | Value | Source run |
 |---|---|---|
-| Generation throughput (selection scan) | 15.02 tok/s | 28683815170 |
-| Generation throughput (checked-in baseline re-run) | 15.68 tok/s | 28691529653 — run-to-run variance well inside the audit's ±25% tolerance |
-| First-token latency (512-tok prompt) | 16.8 s | 28683815170 |
-| Peak RSS | 1,700 MB | 28683815170 |
-| GSM8K exact-match (flexible, n=50, seed 42) | 68% | 28684426883 |
+| Generation throughput (selection scan) | 15.02 tok/s | [28683815170](https://github.com/judeszn/EulerMind/actions/runs/28683815170) |
+| Generation throughput (checked-in baseline re-run) | 15.68 tok/s | [28691529653](https://github.com/judeszn/eulermind-adtc-submission/actions/runs/28691529653) — run-to-run variance well inside the audit's ±25% tolerance |
+| First-token latency (512-tok prompt) | 16.8 s | [28683815170](https://github.com/judeszn/EulerMind/actions/runs/28683815170) |
+| Peak RSS | 1,700 MB | [28683815170](https://github.com/judeszn/EulerMind/actions/runs/28683815170) |
+| GSM8K exact-match (flexible, n=50, seed 42) | 68% | [28684426883](https://github.com/judeszn/EulerMind/actions/runs/28684426883) |
 | False certification (application layer, 3 domains, 192 certs) | 0% | EulerMind repo, G3/D2 |
-| Cross-environment reproduction | byte-identical (sha256) | 28673053751 |
+| Cross-environment reproduction | byte-identical (sha256) | [28673053751](https://github.com/judeszn/EulerMind/actions/runs/28673053751) |
 
 **African use case (load-bearing):** the two registered test prompts are
 real SME/community planning problems — a Lagos furniture workshop's

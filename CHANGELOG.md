@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-07-05 — Tutor lane synchronized
+- Vendored the tutor lane from the research repo at commit d44a160:
+  local-model streaming (llama.cpp), deterministic answer checker
+  (16 question families, fail-closed), trust labels with plain-English
+  rationale, truncation guard, one-question-at-a-time gate.
+- `run_demo.sh`: one command starts llama-server + the demo UI.
+- Measured on 20 real WAEC past-paper questions (user-sourced, live
+  model): 12/20 machine-checked (Derived), 8 honest Heuristics,
+  0 false verifications, 0 truncations.
+- Certified lane unchanged: both registered test prompts still certify
+  (Lagos LP re-verified end-to-end during this sync).
+
 ## 2026-07-04 — Release candidate
 - Vendored the certified pipeline (`app/`) so the demo runs from this
   repository with one command and zero dependencies.

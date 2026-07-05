@@ -1,8 +1,7 @@
-"""EulerMind local demo — run the certified pipeline from THIS repo.
-
-Vendored from the EulerMind research repo (github.com/judeszn/EulerMind);
-the app/ package is a verbatim copy of the certified pipeline with only
-import paths adapted. Full experiment history lives in the research repo.
+# VENDORED verbatim from the EulerMind research repo (github.com/judeszn/EulerMind)
+# at commit d44a160 - only import paths adapted. Canonical source + full
+# experiment history live there. Do not edit here.
+"""EulerMind local demo — the judge-facing entry point.
 
 Single file, Python stdlib only (no pip installs, no cloud, no network
 calls). Serves a browser UI at http://localhost:7860 that runs the REAL
@@ -15,7 +14,7 @@ installers, no deployment). It exists so a judge can disconnect Wi-Fi,
 paste a problem, and watch a certified answer appear with every pipeline
 stage visible.
 
-    python3 -m app.local_demo   # from the repository root
+    python3 -m app.local_demo
 """
 
 from __future__ import annotations
@@ -48,7 +47,6 @@ from .edge_independent_checker import (
     independent_recheck as edge_independent)
 
 PORT = 7860
-_EDGE_EXAMPLE = "An edge AI deployment must choose how many instances of each available model to run, given shared hardware budgets.\n\nLast quarter, the maintenance team replaced 323 light fixtures.\n\nAvailable models:\n- XGBoost: 0.76GB RAM, 31 GFLOPS, accuracy=0.96, latency=66ms\n- KNN: 0.66GB RAM, 18 GFLOPS, accuracy=0.93, latency=29ms\n- SVM-linear: 0.73GB RAM, 19 GFLOPS, accuracy=0.88, latency=18ms\n- DecisionTree: 0.43GB RAM, 19 GFLOPS, accuracy=0.91, latency=61ms\n- CNN: 0.42GB RAM, 38 GFLOPS, accuracy=0.85, latency=11ms\n\nThe parking lot has space for 377 vehicles.\n\nTotal RAM budget: 3789MB across all deployed models. FLOPS budget: 92 GFLOPS. Latency budget: 123ms total.\n\nAt least one deployed model must have accuracy >= 0.9 for SOTA performance. Only integer counts are allowed.\n\nDetermine how many units of each model to deploy to maximize the weighted score (0.7*accuracy + 0.3/latency per unit, summed over all deployed units), then verify that your plan satisfies every budget and the high-accuracy-model requirement."
 
 
 class _StubFallback:
@@ -134,13 +132,11 @@ def solve(text: str) -> dict:
                 result = _solve_edge(edge_spec)
 
     if result is None:
-        return {"domain": None, "label": "Open", "stages": [
-                    {"stage": "Formalized", "ok": False,
-                     "note": "no certified-domain formalizer parses this text"}],
-                "answer": ("Outside EulerMind's certified domains. Per Law 1, "
-                           "no certified answer is fabricated — the trust "
-                           "label is Open, and that is stated rather than "
-                           "hidden."),
+        return {"domain": None, "label": "Open", "tutor_eligible": True,
+                "stages": [
+                    {"stage": "Certified lane", "ok": False,
+                     "note": "not a certified-domain problem — handing to the tutor lane"}],
+                "answer": "",
                 "ms": round((time.perf_counter() - t0) * 1000, 1)}
 
     stages.append({"stage": "Solved", "ok": True, "note": "exact deterministic solver"})
@@ -178,9 +174,16 @@ _NAIROBI = ("A community health programme in Nairobi must assign four "
 
 
 def _examples() -> list[dict]:
-    return [{"name": "Lagos workshop (test prompt 1)", "text": _LAGOS},
-            {"name": "Nairobi clinics (test prompt 2)", "text": _NAIROBI},
-            {"name": "Edge-AI deployment (messy text)", "text": _EDGE_EXAMPLE}]
+    # Four buttons only: three tutor-lane maths examples + one certified
+    # example. Nairobi (test prompt 2) and the pinned Edge-AI instance still
+    # work when pasted — the router is unchanged; only discovery is curated.
+    return [{"name": "Quadratic equation (WAEC)",
+             "text": "Solve 2x^2 + 7x + 3 = 0. Show your working."},
+            {"name": "Simultaneous equations (WAEC)",
+             "text": "Solve the simultaneous equations 3x + 2y = 16 and x - y = 3."},
+            {"name": "Differentiation (WAEC)",
+             "text": "Differentiate x^2 sin(x) with respect to x."},
+            {"name": "Lagos workshop (certified)", "text": _LAGOS}]
 
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
@@ -188,19 +191,41 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
 body{font-family:-apple-system,system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;color:#1a1a18;background:#faf9f5}
 h1{font-size:1.5rem;margin-bottom:.2rem} .sub{color:#666;margin-top:0}
 .badges span{display:inline-block;background:#e1f5ee;color:#085041;border-radius:6px;padding:2px 10px;font-size:.8rem;margin-right:6px}
+.trustkey{font-size:.76rem;color:#555;margin:.7rem 0 .2rem;line-height:2}
+.trustkey b{font-weight:600;color:#333}
+.k{display:inline-block;border-radius:6px;padding:1px 8px;font-weight:600;font-size:.72rem;margin-right:2px}
 textarea{width:100%;height:170px;font-family:ui-monospace,monospace;font-size:.85rem;padding:.6rem;border:1px solid #ccc;border-radius:8px;box-sizing:border-box}
 button{background:#1a1a18;color:#fff;border:0;border-radius:8px;padding:.55rem 1.4rem;font-size:.95rem;cursor:pointer;margin-top:.5rem}
 button.ex{background:#fff;color:#1a1a18;border:1px solid #ccc;font-size:.8rem;padding:.3rem .8rem;margin-right:.4rem}
 .stage{margin:.25rem 0;font-size:.92rem}.ok{color:#0f6e56}.fail{color:#a32d2d}
 .label{display:inline-block;border-radius:6px;padding:3px 12px;font-weight:600;margin:.6rem 0}
-.Verified{background:#e1f5ee;color:#085041}.Open{background:#faeeda;color:#633806}.Derived{background:#e6f1fb;color:#0c447c}
+.Verified{background:#e1f5ee;color:#085041}.Open{background:#faeeda;color:#633806}.Derived{background:#e6f1fb;color:#0c447c}.Heuristic{background:#faeeda;color:#633806}
 .answer{background:#fff;border:1px solid #ddd;border-radius:8px;padding:.8rem 1rem;font-size:.95rem}
+.legend{color:#8a8372;font-size:.78rem;margin:.3rem 0 .7rem}
+.zonelabel{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:#8a8372;margin:.1rem 0 .45rem;font-weight:600}
+.modelzone{border:1px dashed #d8d3c6;border-radius:10px;padding:.5rem .7rem;margin:.5rem 0}
+.step{background:#fff;border:1px solid #e6e3db;border-left:3px solid #cfc9bd;border-radius:8px;padding:.45rem .8rem;margin:.35rem 0}
+.stepchip{display:inline-block;background:#f0ede4;color:#6b6455;border-radius:5px;padding:1px 8px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-bottom:.3rem}
+.stepbody{white-space:pre-wrap;font-size:.92rem;line-height:1.45}
+.answerbox{background:#fff;border:2px solid #c9a94b;border-radius:10px;padding:.6rem 1rem;margin:.6rem 0}
+.answerval{font-size:1.5rem;font-weight:700;white-space:pre-wrap;color:#1a1a18}
+.checkzone{border:1px solid #b9d9cc;background:#f5fbf8;border-radius:10px;padding:.5rem .7rem;margin:.5rem 0;font-family:ui-monospace,monospace}
+.checkline{white-space:pre-wrap;font-size:.9rem}
+.checkline.ok{color:#0f6e56}.checkline.fail{color:#a32d2d}
+.why{font-size:.82rem;color:#555;margin-top:.45rem;font-family:-apple-system,system-ui,sans-serif}
+.trusted{border:1px solid #b9d9cc;background:#f2fbf7;border-radius:10px;padding:.5rem .8rem;margin:.5rem 0}
+.tline{font-size:.88rem;color:#0f6e56;line-height:1.75;font-family:-apple-system,system-ui,sans-serif}
 .meta{color:#888;font-size:.8rem}</style></head><body>
 <h1>EulerMind</h1>
-<p class="sub">Offline mathematical reasoning — every answer certified twice</p>
-<div class="badges"><span>✓ Offline</span><span>✓ CPU-only</span><span>✓ Deterministic certification</span><span>✓ Independent verification</span></div>
+<p class="sub">The offline maths tutor that knows the difference between what it has proved and what it has only inferred</p>
+<div class="badges"><span>✓ Works without internet</span><span>✓ Runs on ordinary school laptops</span><span>✓ Checks its own answers</span></div>
+<div class="trustkey">
+<span class="k Verified">Verified</span> independently certified ·
+<span class="k Derived">Derived</span> machine-checked ·
+<span class="k Heuristic">Heuristic</span> AI explanation only ·
+<span class="k Open">Open</span> solved step by step</div>
 <p class="meta">Examples: <span id="exbtns"></span></p>
-<textarea id="q" placeholder="Paste a resource-allocation, assignment, or production-planning problem…"></textarea><br>
+<textarea id="q" placeholder="Paste any secondary-school maths question (WAEC/SSCE) — equations, factorising, differentiation… or a resource-allocation problem for the certified lane"></textarea><br>
 <button onclick="go()">Solve</button>
 <div id="out"></div>
 <script>
@@ -208,16 +233,171 @@ const EXAMPLES = __EXAMPLES__;
 const exb = document.getElementById('exbtns');
 EXAMPLES.forEach(e=>{const b=document.createElement('button');b.className='ex';b.textContent=e.name;
   b.onclick=()=>{document.getElementById('q').value=e.text;};exb.appendChild(b);});
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 async function go(){
+  const q=document.getElementById('q').value;
   const out=document.getElementById('out'); out.innerHTML='<p class="meta">solving…</p>';
-  const r=await fetch('/solve',{method:'POST',body:JSON.stringify({text:document.getElementById('q').value})});
-  const d=await r.json(); let h='';
-  if(d.domain) h+='<p class="meta">domain: '+d.domain+'</p>';
+  const r=await fetch('/solve',{method:'POST',body:JSON.stringify({text:q})});
+  const d=await r.json();
+  if(d.tutor_eligible){ return tutor(q, out, d); }
+  let h='';
+  if(d.domain) h+='<p class="meta">certified lane · '+d.domain+'</p>';
   h+='<div>'+d.stages.map(s=>'<div class="stage '+(s.ok?'ok':'fail')+'">'+(s.ok?'✓':'✗')+' '+s.stage+' <span class="meta">'+s.note+'</span></div>').join('')+'</div>';
   h+='<div class="label '+d.label+'">'+d.label+'</div>';
-  h+='<div class="answer">'+d.answer+'</div>';
+  h+='<div class="answer">'+esc(d.answer)+'</div>';
   h+='<p class="meta">'+d.ms+' ms, fully local</p>';
   out.innerHTML=h;
+}
+// Σ2 lock: the MODEL ZONE renders the model's own words. The model emits a
+// tag contract (<UNDERSTANDING>…</TAKEAWAY>); EULERMIND owns presentation —
+// section titles, order, and plain-text maths notation are decided here, not
+// by the model. COSMETIC ONLY: the trust decision uses the server-side parser
+// in answer_checker, never this. No box is a trust label; we do not certify
+// anything the model said.
+
+// Display-side maths normalizer: converts residual LaTeX to readable plain
+// text. Presentation only — the checker receives the RAW model text and does
+// its own normalization server-side.
+function deLatex(s){
+  // inner, brace-free forms first, so \\frac's [^{}] match then succeeds on
+  // nested content like \\frac{-7 \\pm \\sqrt{25}}{4}
+  s=s.replace(/\\\\sqrt\\{([^{}]+)\\}/g,'√($1)')
+     .replace(/\\\\text\\{([^{}]*)\\}/g,'$1')
+     .replace(/\\\\mathrm\\{([^{}]*)\\}/g,'$1')
+     .replace(/\\\\cdot/g,'·').replace(/\\\\times/g,'×').replace(/\\\\pm/g,'±')
+     .replace(/\\\\(?:quad|qquad|,|;|!)/g,' ')
+     .replace(/\\\\(?:left|right)/g,'');
+  for(let i=0;i<3;i++) s=s.replace(/\\\\frac\\{([^{}]+)\\}\\{([^{}]+)\\}/g,'($1)/($2)');
+  s=s.replace(/\\\\boxed\\{([^{}]+)\\}/g,'$1')
+     .replace(/\\\\[\\[\\]()]/g,'')
+     .replace(/\\$/g,'');
+  return s;
+}
+
+// EulerMind decides the section names and order — the model only fills slots.
+const TAG_LAYOUT=[['UNDERSTANDING','Understanding'],['METHOD','Method'],
+                  ['CALCULATION','Calculation'],['MISTAKE','Common mistake'],
+                  ['TAKEAWAY','Key takeaway']];
+function parseTags(text){
+  const grab=t=>{const m=text.match(new RegExp('<'+t+'>([\\\\s\\\\S]*?)(?:</'+t+'>|$)'));
+                 return m?m[1].trim():null;};
+  const secs=[];
+  for(const [tag,title] of TAG_LAYOUT){
+    const body=grab(tag);
+    if(body) secs.push({title, body});
+  }
+  return {secs, answer: grab('ANSWER'), tagged: secs.length>0};
+}
+function segmentSections(text){
+  const m=text.search(/FINAL ANSWER(?![a-z])/i);
+  const working = m>=0 ? text.slice(0,m) : text;
+  let answer  = m>=0 ? text.slice(m).replace(/FINAL ANSWER(?![a-z])\\s*:?\\s*/i,'').trim() : '';
+  if(!answer){ // math models' native convention: last \\boxed{...} is the answer
+    const boxed=[...text.matchAll(/\\\\boxed\\{([^{}]*)\\}/g)];
+    if(boxed.length) answer=boxed[boxed.length-1][1].trim();
+  }
+  const secs=[]; let cur=null;
+  for(const ln of working.split('\\n')){
+    const hm=ln.match(/^\\s*#{1,3}\\s*(.+?)\\s*:?\\s*$/);
+    if(hm){ cur={title:hm[1].trim(), body:''}; secs.push(cur); }
+    else if(cur){ cur.body+=ln+'\\n'; }
+    else if(ln.trim()){ cur={title:'', body:ln+'\\n'}; secs.push(cur); }
+  }
+  // Honest fallback: no headers emitted → generic Step N segmentation of the
+  // same text. Structuring presentation, never inventing headers.
+  if(!secs.some(s=>s.title)){
+    let parts=working.split(/\\n(?=\\s*(?:step\\s*\\d+|[0-9]+\\s*[.)])\\b)/i);
+    if(parts.length<2) parts=working.split(/\\n\\s*\\n/);
+    parts=parts.map(s=>s.trim()).filter(Boolean);
+    return {secs: parts.map((p,i)=>({title:'Step '+(i+1), body:p})), answer};
+  }
+  return {secs: secs.map(s=>({title:s.title, body:s.body.trim()}))
+                    .filter(s=>s.title||s.body), answer};
+}
+function renderStream(el, text){
+  // Prefer the tag contract; fail OPEN to the header/step segmenter on
+  // untagged output (older models, contract misses). Never stall, never fake.
+  let secs, answer;
+  const tagged = parseTags(text);
+  if(tagged.tagged){ secs=tagged.secs; answer=tagged.answer; }
+  else { const f=segmentSections(text); secs=f.secs; answer=f.answer; }
+  let h='<div class="modelzone"><div class="zonelabel">Model’s explanation</div>';
+  secs.forEach(s=>{ h+='<div class="step"><span class="stepchip">'+esc(s.title||'Reasoning')
+    +'</span><div class="stepbody">'+esc(deLatex(s.body))+'</div></div>'; });
+  if(!secs.length) h+='<div class="step"><span class="stepchip">Thinking</span>'
+    +'<div class="stepbody">'+esc(deLatex(text))+'</div></div>';
+  h+='</div>';
+  if(answer) h+='<div class="answerbox"><div class="zonelabel">Answer</div>'
+    +'<div class="answerval">'+esc(deLatex(answer))+'</div></div>';
+  el.innerHTML=h;
+}
+async function tutor(q, out, solved){
+  out.innerHTML='<p class="meta">tutor lane · local model, streaming — fully offline</p>'
+    +'<p class="legend">The sections below are the model\\'s explanation. '
+    +'Only the final answer is machine-checked by EulerMind.</p>'
+    +'<div id="steps"></div><div id="verdict"></div>';
+  const stepsEl=document.getElementById('steps');
+  const resp=await fetch('/tutor',{method:'POST',body:JSON.stringify({text:q})});
+  if(resp.status===409){
+    const e=await resp.json();
+    stepsEl.innerHTML='<div class="checkzone"><div class="zonelabel">One question at a time</div>'
+      +'<div class="checkline">'+esc(e.message)+'</div></div>';
+    return;
+  }
+  if(resp.status===503){
+    const e=await resp.json();
+    stepsEl.innerHTML='<div class="checkzone"><div class="zonelabel">Tutor lane offline</div>'
+      +'<div class="checkline fail">'+esc(e.error)+'</div>'
+      +'<div class="why">The certified lane still works without it.</div></div>';
+    return;
+  }
+  const reader=resp.body.getReader(); const dec=new TextDecoder(); let full='';
+  const FIN=/\\n?⟪EULERMIND:FINISH=(\\w+)⟫/;
+  while(true){ const {done,value}=await reader.read(); if(done)break;
+    full+=dec.decode(value,{stream:true});
+    renderStream(stepsEl, full.replace(FIN,'')); }
+  const fm=full.match(FIN); const finish=fm?fm[1]:'stop';
+  full=full.replace(FIN,'');
+  renderStream(stepsEl, full);
+  if(finish==='length'){
+    // truncated generation: NEVER verify a clipped answer
+    document.getElementById('verdict').innerHTML=
+      '<div class="checkzone"><div class="zonelabel">EulerMind machine check</div>'
+      +'<div class="checkline">Not checked — the generation stopped at the token limit.</div>'
+      +'<div class="label Heuristic">Heuristic</div></div>'
+      +'<div class="why"><b>The explanation ended before a complete answer was produced.</b> '
+      +'Nothing was checked — ask the question again.</div>';
+    return;
+  }
+  document.getElementById('verdict').innerHTML='<p class="meta">EulerMind is running the deterministic machine check…</p>';
+  // Adapter: if the tag contract produced an <ANSWER>, pass that exact string
+  // (raw, un-normalized) to the checker via the marker it parses. Contents
+  // are the model's verbatim answer — only the envelope changes.
+  const tg=parseTags(full);
+  const checkText = (tg.tagged && tg.answer) ? ('FINAL ANSWER: '+tg.answer) : full;
+  const c=await(await fetch('/check',{method:'POST',body:JSON.stringify({question:q,answer:checkText})})).json();
+  const pass=c.checked&&c.passed, fail=c.checked&&c.passed===false;
+  const unchecked_shape = !c.checked && c.note && c.note.indexOf('not in the checkable families')>=0;
+  let v='<div class="checkzone"><div class="zonelabel">EulerMind machine check</div>';
+  v+='<div class="checkline '+(pass?'ok':(fail?'fail':''))+'">';
+  if(pass) v+='✓ '+esc(c.method)+' — '+esc(c.note);
+  else if(fail) v+='✗ verification FAILED — '+esc(c.note);
+  else v+='Not verified — '+esc(c.note);
+  v+='</div>';
+  v+='<div class="label '+c.label+'">'+c.label+'</div>';
+  v+='</div>';
+  if(pass && c.rationale && c.rationale.length){
+    v+='<div class="trusted"><div class="zonelabel">Why this answer is trusted</div>';
+    c.rationale.forEach(b=>{ v+='<div class="tline">✓ '+esc(b)+'</div>'; });
+    v+='</div>';
+  } else if(fail){
+    v+='<div class="why"><b>Do not trust this answer.</b> EulerMind checked it and it does not survive the check — the model\\'s working contains an error.</div>';
+  } else if(unchecked_shape){
+    v+='<div class="why"><b>AI explanation only.</b> This question is beyond what EulerMind can check by deterministic mathematics. The working above comes from the AI model and may contain mistakes.</div>';
+  } else {
+    v+='<div class="why"><b>Nothing was verified.</b> EulerMind found no machine-checkable final answer in the explanation.</div>';
+  }
+  document.getElementById('verdict').innerHTML=v;
 }
 </script></body></html>"""
 
@@ -235,25 +415,81 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_POST(self):
-        if self.path != "/solve":
-            self.send_response(404)
-            self.end_headers()
-            return
-        n = int(self.headers.get("Content-Length", 0))
-        text = json.loads(self.rfile.read(n)).get("text", "")
-        try:
-            result = solve(text)
-        except Exception as e:
-            result = {"domain": None, "label": "Open", "stages": [],
-                      "answer": f"Pipeline error (reported, not hidden): {e}",
-                      "ms": 0}
-        body = json.dumps(result).encode()
-        self.send_response(200)
+    def _json(self, obj, status=200):
+        body = json.dumps(obj).encode()
+        self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0))
+        try:
+            payload = json.loads(self.rfile.read(n)) if n else {}
+        except json.JSONDecodeError:
+            self._json({"error": "bad request"}, 400)
+            return
+        text = payload.get("text", "")
+
+        if self.path == "/solve":
+            try:
+                result = solve(text)
+            except Exception as e:
+                result = {"domain": None, "label": "Open", "stages": [],
+                          "answer": f"Pipeline error (reported, not hidden): {e}",
+                          "ms": 0}
+            self._json(result)
+            return
+
+        if self.path == "/tutor":
+            from .tutor import (MULTI_QUESTION_MESSAGE,
+                                detect_multiple_questions, discover_server,
+                                stream_tutor_answer)
+            if detect_multiple_questions(text):
+                # deterministic gate: no model call, no check, no guessing
+                self._json({"multi_question": True,
+                            "message": MULTI_QUESTION_MESSAGE}, 409)
+                return
+            server = discover_server()
+            if server is None:
+                self._json({"error": "no local model server. Start one with: "
+                            "llama-server -m model/<model>.gguf --port 8080"}, 503)
+                return
+            base, model = server
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            status: dict = {}
+            try:
+                for chunk in stream_tutor_answer(text, base, model, status):
+                    self.wfile.write(chunk.encode("utf-8"))
+                    self.wfile.flush()
+                # end-of-stream sentinel: completion status for the client
+                # (⟪⟫ delimiters cannot occur in model output)
+                reason = status.get("finish_reason", "stop")
+                self.wfile.write(f"\n⟪EULERMIND:FINISH={reason}⟫".encode("utf-8"))
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionError, OSError):
+                pass
+            return
+
+        if self.path == "/check":
+            from .answer_checker import check_answer, trust_rationale
+            try:
+                result = check_answer(payload.get("question", ""),
+                                      payload.get("answer", ""))
+                result["rationale"] = trust_rationale(result)
+            except Exception as e:
+                result = {"label": "Heuristic", "checked": False,
+                          "passed": None, "method": None, "rationale": [],
+                          "note": f"checker error (reported, not hidden): {e}"}
+            self._json(result)
+            return
+
+        self.send_response(404)
+        self.end_headers()
 
 
 def main() -> None:

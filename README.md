@@ -4,21 +4,32 @@
 **Model:** Qwen2.5-Math-1.5B-Instruct (GGUF Q4_K_M, llama.cpp) ·
 **Peak RAM:** 1.7 GB measured · **Fully offline** · CPU-only
 
-A math-specialized local model wrapped in a deterministic verification
-pipeline. For production-planning, assignment, and resource-allocation
-problems, the language model only *reads* the problem — an exact solver
-computes the answer, a verifier certifies it, and a **second,
-independently-written checker re-proves it before anything is labeled
-"Verified."** Measured across three domains: 192/192 certificates
-agreed, **0% false certification**.
+An offline maths tutor that checks its own answers before asking
+students to trust them. Two lanes, one honesty rule:
+
+- **Tutor lane** (any secondary-school maths question): the local model
+  explains step by step; a deterministic checker then re-derives the final
+  answer from the question itself — substitution, recomputation, numeric
+  identity. Checked answers are labeled **Derived**; anything unverifiable
+  is labeled **Heuristic**, plainly. Measured on 20 real WAEC past-paper
+  questions: 12 machine-checked, 0 false verifications.
+- **Certified lane** (optimization/assignment problems): an exact solver
+  computes the answer, a verifier certifies it, and a **second,
+  independently-written checker re-proves it** before anything is labeled
+  "Verified." Measured across three domains: 192/192 certificates agreed,
+  **0% false certification**.
 
 ## Try it in 60 seconds (no installs, no internet, no GPU)
 
 ```bash
-python3 -m app.local_demo        # → open http://localhost:7860
+./run_demo.sh                    # model + UI (needs llama.cpp + the GGUF:
+                                 #   brew install llama.cpp && ./download_model.sh)
+python3 -m app.local_demo        # UI only — certified lane works with no model
 ```
 
-Pure Python standard library. Click **"Lagos workshop (test prompt 1)"**
+Pure Python standard library. Paste any WAEC-style maths question and
+watch it explain, machine-check, and label its confidence — or click
+**"Lagos workshop (certified)"**
 — one of this submission's registered test prompts — and press Solve.
 You'll see all four pipeline stages certify and a Verified answer
 (30 chairs, 30 tables, ₦345,000). Then paste any out-of-scope question:

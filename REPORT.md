@@ -97,8 +97,8 @@ Designed against the ADTC Standard Laptop, measured under it:
 
 | Constraint | Design response | Measured |
 |---|---|---|
-| 8 GB RAM, OOM = disqualification | 1.5B Q4_K_M model, stdlib-only pipeline | Peak RSS **1,700 MB** — ~24% of the 7 GB scoring budget |
-| CPU-only (no discrete GPU) | llama.cpp CPU inference; all solvers are exact classical algorithms | 15.02 TPS generation on 4 vCPU x86 |
+| 8 GB RAM, OOM = disqualification | 1.5B Q4_K_M model, stdlib-only pipeline | Peak RSS **1,699 MB** (checked-in baseline, run 28691529653) — ~24% of the 7 GB scoring budget |
+| CPU-only (no discrete GPU) | llama.cpp CPU inference; all solvers are exact classical algorithms | 15.68 TPS generation on 4 vCPU x86 (checked-in baseline, run 28691529653) |
 | Offline | Zero network calls at inference; weights fetched once by `download_model.sh` | Verified: pipeline is Python stdlib + llama.cpp only |
 | Thermal | Small model, short bursts, no sustained retry loops | No throttling observed in any profiled run |
 | Connectivity/data cost context | One-time 1.0 GB download, then fully local forever | — |
@@ -113,7 +113,8 @@ All numbers from the **official adtc-profiler, unmodified**, on x86
 | Generation throughput (selection scan) | 15.02 tok/s | [28683815170](https://github.com/judeszn/EulerMind/actions/runs/28683815170) |
 | Generation throughput (checked-in baseline re-run) | 15.68 tok/s | [28691529653](https://github.com/judeszn/eulermind-adtc-submission/actions/runs/28691529653) — run-to-run variance well inside the audit's ±25% tolerance |
 | First-token latency (512-tok prompt) | 16.8 s | [28683815170](https://github.com/judeszn/EulerMind/actions/runs/28683815170) |
-| Peak RSS | 1,700 MB | [28683815170](https://github.com/judeszn/EulerMind/actions/runs/28683815170) |
+| Peak RSS (selection scan) | 1,700 MB | [28683815170](https://github.com/judeszn/EulerMind/actions/runs/28683815170) |
+| Peak RSS (checked-in baseline re-run) | 1,699 MB | [28691529653](https://github.com/judeszn/eulermind-adtc-submission/actions/runs/28691529653) — within the audit's ±15% RAM tolerance |
 | GSM8K exact-match (flexible, n=50, seed 42) | 68% | [28684426883](https://github.com/judeszn/EulerMind/actions/runs/28684426883) |
 | False certification (application layer, 3 domains, 192 certs) | 0% | EulerMind repo, G3/D2 |
 | Cross-environment reproduction | byte-identical (sha256) | [28673053751](https://github.com/judeszn/EulerMind/actions/runs/28673053751) |

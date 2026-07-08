@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-07-08 — Cross-repo consistency audit
+- `REPORT.md`: the Peak RSS and CPU-only rows conflated two different CI
+  runs' readings (1,700 MB / 15.02 TPS from the model-selection scan,
+  run 28683815170) under a single unlabeled "Measured" value, while the
+  Benchmarks table's throughput row already correctly distinguished
+  scan vs. checked-in-baseline readings. Split the Peak RSS row the same
+  way and repointed the Constraints table's headline RAM/TPS figures to
+  the checked-in baseline (1,699 MB / 15.68 TPS, run 28691529653 —
+  `baseline_submission_ci_28691529653.json`, already committed here).
+  No new measurement — this only fixes which existing, already-committed
+  number each row cites.
+- Corresponding fix on the research-repo side (out of this repo's
+  scope, noted for the record): `run_demo.sh` and
+  `competition/PRODUCTION_SETUP.md` there cited a stale, unverified
+  Hugging Face source (`huggingface.co/Qwen/...`, generic
+  `models/qwen2.5-math-1.5b/model.gguf` path) predating this repo's
+  CI-verified `download_model.sh` source
+  (`huggingface.co/bartowski/...`, `model/Qwen2.5-Math-1.5B-Instruct-Q4_K_M.gguf`).
+  Research repo now matches this repo's proven path and URL exactly.
+
 ## 2026-07-08 — Gate 1 sync audit (no code changes)
 - Audited this repository file-by-file against the research repo's
   finalized Gate 1 state ([judeszn/EulerMind@v1.0-gate1](https://github.com/judeszn/EulerMind/tree/v1.0-gate1), tag only, no formal release).

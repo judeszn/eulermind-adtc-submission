@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-07-08 — Gate 1 sync audit (no code changes)
+- Audited this repository file-by-file against the research repo's
+  finalized Gate 1 state ([judeszn/EulerMind@v1.0-gate1](https://github.com/judeszn/EulerMind/tree/v1.0-gate1), tag only, no formal release).
+- Result: no drift found. All vendored `app/*.py` files are pinned to
+  commits (`d44a160`, `8521038`) that carry zero content changes up to
+  the Gate 1 tag — verified by diffing each pinned commit against
+  `v1.0-gate1` in the research repo (`git log <pin>..v1.0-gate1 --
+  <path>`, empty for every vendored file). `LICENSE` is byte-identical.
+  README/REPORT/KNOWN_LIMITATIONS numbers (192/192 certificates, 1.7 GB
+  peak RAM, 15.68/15.02 TPS, 12/20 real-WAEC) already match the
+  research repo's finalized figures.
+- The Gate 1 lockdown in the research repo was documentation-only
+  (README rewrite, LICENSE addition, competition/ doc consolidation) —
+  nothing in that pass touched code this repository vendors.
+- No file changes required in this repository beyond this entry.
+
 ## 2026-07-05 — Tutor lane synchronized
 - Vendored the tutor lane from the research repo at commit d44a160:
   local-model streaming (llama.cpp), deterministic answer checker

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-07-12 — LaTeX prettifier: named functions
+- Re-vendored `app/local_demo.py` from the research repo at commit
+  `4ab0ddf` (import paths only adapted). Copy-only.
+- Real gap found via a user-reported screenshot of the differentiation
+  example (one of only three example buttons): the LaTeX prettifier's
+  symbol map covered Greek letters, arrows, and set notation, but never
+  named functions (`\sin`, `\cos`, `\tan`, `\log`, `\ln`, `\exp`, `\lim`,
+  `\max`, `\min`, `\gcd`, `\det`, etc.) — these fell through unmatched
+  and appeared as literal `\sin(x)` in rendered answers. Fixed with a
+  bare-name mapping (`\sin` → `sin`), since these commands only tell
+  LaTeX to use upright type rather than italicizing the letters as
+  three separate variables.
+- The x² superscript conversion reported alongside it in the same
+  screenshot was tested and confirmed already correct — that part of
+  the report was a stale browser tab / unrestarted local server, not a
+  code defect.
+- Data layer and certificate IDs unchanged (Lagos re-verified: Verified
+  30×30/₦345,000, cert ID 66D9FFF112F1).
+
 ## 2026-07-12 — Badge/trust-key terminology fix
 - Re-vendored `app/local_demo.py` from the research repo at commit
   `8f1c395` (import paths only adapted). Copy-only change.

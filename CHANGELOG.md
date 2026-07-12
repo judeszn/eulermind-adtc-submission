@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-07-12 — Badge/trust-key terminology fix
+- Re-vendored `app/local_demo.py` from the research repo at commit
+  `8f1c395` (import paths only adapted). Copy-only change.
+- The "Checks its own answers" badge implied universal coverage while
+  the trust key two lines below reserves "Verified" for the certified
+  lane only — a judge reading both together could read the 16-families
+  refusal message as contradicting the badge instead of demonstrating
+  it. Badge now reads "Checks its answers — and says when it can't".
+  Deliberately avoids "Verifies" in the badge, since the trust key
+  already reserves that word for the certified lane.
+- Subtitle tightened: "tells you" / "or is an AI explanation".
+- Heuristic explanation: "may contain mistakes" alone became "has not
+  been machine-checked — it may contain mistakes", replacing a
+  reference to "independently verified" (the certified lane's reserved
+  phrase, not applicable to the tutor lane) while keeping the
+  mistake-prone admission — `KNOWN_LIMITATIONS.md` states this
+  outright, so softening it here would have made the UI inconsistent
+  with the repo's own documented limitations.
+- Data layer unchanged: `/check` and `/solve` return identical payloads
+  before and after. Re-verified: Lagos test prompt still Verified
+  30×30/₦345,000, same certificate ID (66D9FFF112F1) as before this
+  change.
+
 ## 2026-07-12 — UI trust-legibility pass
 - Re-vendored `app/local_demo.py` from the research repo at commit
   `e9856c6` (import paths only adapted, per the standing rule).

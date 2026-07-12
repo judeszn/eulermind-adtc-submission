@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-07-12 — UI trust-legibility pass
+- Re-vendored `app/local_demo.py` from the research repo at commit
+  `e9856c6` (import paths only adapted, per the standing rule).
+  Presentation-only change: `app/answer_checker.py` and every
+  certified-lane solver/formalizer/checker file are untouched — no
+  verification or label-assignment logic changed.
+- Fixed a trust-copy bug: the Open badge legend read "solved step by
+  step", which implies success for a refusal label. Now "could not
+  answer — says so".
+- Extended the display-only LaTeX prettifier (Greek letters, arrows/
+  relations, blackboard-bold sets, numeric sub/superscripts). Found and
+  fixed a real rendering bug in the process: the pre-existing `\pm`
+  pattern had no word boundary and mangled `\pmod{n}` into garbage;
+  added a dedicated handler.
+- Tutor-lane verdict now shows Method/Result as separate lines (same
+  underlying `method`/`note` fields the checker already returned — no
+  new data), a real generation/verification/total timing breakdown
+  (measured via `performance.now()` around the actual fetches, never
+  estimated), and an honest "why not verified" explanation listing the
+  16 real checker family names (introspected from
+  `answer_checker._CHECKERS`, not hand-copied — can't drift from what's
+  actually implemented). No LLM topic classification.
+- Certified lane now shows a Certificate ID: sha256 of the actual
+  certificate dict, first 12 hex digits. Verified deterministic (same
+  problem produces the same ID across repeated runs).
+- Rejected on review, not implemented: star ratings, invented confidence
+  percentages, fabricated certificate IDs, LLM topic classification,
+  verification-coverage percentages — none are computable from data the
+  system has; inventing them would violate the project's own Law 1 in
+  the part of the product that exists to demonstrate it doesn't.
+- Re-verified both registered test prompts end-to-end after vendoring
+  (Lagos: Verified 30×30/₦345,000; Nairobi: Verified valid assignment),
+  plus `benchmark.selftest`, `research.S1_tutor_lane.test_checker`, D1,
+  D5 all green.
+
 ## 2026-07-08 — Cross-repo consistency audit
 - `REPORT.md`: the Peak RSS and CPU-only rows conflated two different CI
   runs' readings (1,700 MB / 15.02 TPS from the model-selection scan,

@@ -1,5 +1,5 @@
 # VENDORED verbatim from the EulerMind research repo (github.com/judeszn/EulerMind)
-# at commit d44a160 - only import paths adapted. Canonical source + full
+# at commit e9856c6 - only import paths adapted. Canonical source + full
 # experiment history live there. Do not edit here.
 """EulerMind local demo — the judge-facing entry point.
 
@@ -19,6 +19,7 @@ stage visible.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -49,6 +50,15 @@ from .edge_independent_checker import (
 PORT = 7860
 
 
+def _cert_id(cert: dict) -> str:
+    """Display-only identifier derived from the certificate's own content —
+    never fabricated. Same certificate always yields the same ID."""
+    digest = hashlib.sha256(
+        json.dumps(cert, sort_keys=True, default=str).encode()
+    ).hexdigest()
+    return digest[:12].upper()
+
+
 class _StubFallback:
     def formalize(self, state):
         return {"kind": "knapsack", "spec": None, "formalizer_tokens": 0}
@@ -66,7 +76,7 @@ def _solve_lp(spec: dict) -> dict:
     answer = (f"{sol['x']:g} × {names['x']}, {sol['y']:g} × {names['y']} — "
               f"maximum profit {sol['profit']:g}")
     return {"answer": answer, "certificate": rc, "independent": ind["accepted"],
-            "independent_note": ind["reason"],
+            "independent_note": ind["reason"], "cert_id": _cert_id(cert),
             "label": "Verified" if rc and ind["accepted"] else "Derived"}
 
 
@@ -83,7 +93,7 @@ def _solve_csp(spec: dict) -> dict:
                   f"set has {len(sol['minimal_conflict'])} constraints — "
                   "refusing to fabricate an answer (Law 1).")
     return {"answer": answer, "certificate": rc, "independent": ind["accepted"],
-            "independent_note": ind["reason"],
+            "independent_note": ind["reason"], "cert_id": _cert_id(cert),
             "label": "Verified" if rc and ind["accepted"] else "Derived"}
 
 
@@ -98,7 +108,7 @@ def _solve_edge(spec: dict) -> dict:
     plan = ", ".join(f"{n} ×{c}" for n, c in sol["counts"].items() if c > 0)
     return {"answer": f"Deploy {plan} — score {sol['score']}",
             "certificate": rc, "independent": ind["accepted"],
-            "independent_note": ind["reason"],
+            "independent_note": ind["reason"], "cert_id": _cert_id(cert),
             "label": "Verified" if rc and ind["accepted"] else "Derived"}
 
 
@@ -145,7 +155,7 @@ def solve(text: str) -> dict:
     stages.append({"stage": "Independently checked", "ok": result["independent"],
                    "note": result.get("independent_note", "")})
     return {"domain": domain, "label": result["label"], "stages": stages,
-            "answer": result["answer"],
+            "answer": result["answer"], "cert_id": result.get("cert_id"),
             "ms": round((time.perf_counter() - t0) * 1000, 1)}
 
 
@@ -190,6 +200,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <title>EulerMind</title><style>
 body{font-family:-apple-system,system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;color:#1a1a18;background:#faf9f5}
 h1{font-size:1.5rem;margin-bottom:.2rem} .sub{color:#666;margin-top:0}
+.sub2{color:#8a8372;margin-top:.15rem;font-size:.88rem}
 .badges span{display:inline-block;background:#e1f5ee;color:#085041;border-radius:6px;padding:2px 10px;font-size:.8rem;margin-right:6px}
 .trustkey{font-size:.76rem;color:#555;margin:.7rem 0 .2rem;line-height:2}
 .trustkey b{font-weight:600;color:#333}
@@ -218,12 +229,13 @@ button.ex{background:#fff;color:#1a1a18;border:1px solid #ccc;font-size:.8rem;pa
 .meta{color:#888;font-size:.8rem}</style></head><body>
 <h1>EulerMind</h1>
 <p class="sub">The offline maths tutor that knows the difference between what it has proved and what it has only inferred</p>
+<p class="sub2">Every answer clearly states whether it was mathematically verified or generated as an AI explanation.</p>
 <div class="badges"><span>✓ Works without internet</span><span>✓ Runs on ordinary school laptops</span><span>✓ Checks its own answers</span></div>
 <div class="trustkey">
 <span class="k Verified">Verified</span> independently certified ·
 <span class="k Derived">Derived</span> machine-checked ·
 <span class="k Heuristic">Heuristic</span> AI explanation only ·
-<span class="k Open">Open</span> solved step by step</div>
+<span class="k Open">Open</span> could not answer — says so</div>
 <p class="meta">Examples: <span id="exbtns"></span></p>
 <textarea id="q" placeholder="Paste any secondary-school maths question (WAEC/SSCE) — equations, factorising, differentiation… or a resource-allocation problem for the certified lane"></textarea><br>
 <button onclick="go()">Solve</button>
@@ -245,6 +257,7 @@ async function go(){
   h+='<div>'+d.stages.map(s=>'<div class="stage '+(s.ok?'ok':'fail')+'">'+(s.ok?'✓':'✗')+' '+s.stage+' <span class="meta">'+s.note+'</span></div>').join('')+'</div>';
   h+='<div class="label '+d.label+'">'+d.label+'</div>';
   h+='<div class="answer">'+esc(d.answer)+'</div>';
+  if(d.cert_id) h+='<p class="meta">Certificate ID <code>'+esc(d.cert_id)+'</code> — sha256 of the certificate content, first 12 hex digits</p>';
   h+='<p class="meta">'+d.ms+' ms, fully local</p>';
   out.innerHTML=h;
 }
@@ -257,20 +270,44 @@ async function go(){
 
 // Display-side maths normalizer: converts residual LaTeX to readable plain
 // text. Presentation only — the checker receives the RAW model text and does
-// its own normalization server-side.
+// its own normalization server-side. Unknown commands pass through
+// untouched (see the generic word-command fallback at the end).
+const SUP_MAP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻'};
+const SUB_MAP={'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉','+':'₊','-':'₋'};
+function toSup(s){return s.split('').map(c=>SUP_MAP[c]||c).join('');}
+function toSub(s){return s.split('').map(c=>SUB_MAP[c]||c).join('');}
+const MATHBB_MAP={R:'ℝ',N:'ℕ',Z:'ℤ',Q:'ℚ',C:'ℂ'};
+// Known LaTeX word-commands only — anything not in this map is left as-is.
+const SYM_MAP={theta:'θ',Theta:'Θ',alpha:'α',beta:'β',gamma:'γ',Gamma:'Γ',delta:'δ',Delta:'Δ',
+  epsilon:'ε',varepsilon:'ε',pi:'π',Pi:'Π',mu:'μ',sigma:'σ',Sigma:'Σ',lambda:'λ',Lambda:'Λ',
+  phi:'φ',Phi:'Φ',omega:'ω',Omega:'Ω',rho:'ρ',tau:'τ',nu:'ν',chi:'χ',psi:'ψ',Psi:'Ψ',
+  eta:'η',zeta:'ζ',kappa:'κ',xi:'ξ',Xi:'Ξ',
+  Rightarrow:'⇒',Leftarrow:'⇐',Leftrightarrow:'⇔',iff:'⇔',to:'→',
+  leq:'≤',le:'≤',geq:'≥',ge:'≥',neq:'≠',ne:'≠',approx:'≈',sim:'∼',
+  infty:'∞',in:'∈',notin:'∉',forall:'∀',exists:'∃',
+  sum:'∑',prod:'∏',int:'∫',partial:'∂',nabla:'∇',
+  emptyset:'∅',subset:'⊂',supset:'⊃',subseteq:'⊆',supseteq:'⊇',cup:'∪',cap:'∩',
+  langle:'⟨',rangle:'⟩',circ:'∘'};
 function deLatex(s){
   // inner, brace-free forms first, so \\frac's [^{}] match then succeeds on
   // nested content like \\frac{-7 \\pm \\sqrt{25}}{4}
   s=s.replace(/\\\\sqrt\\{([^{}]+)\\}/g,'√($1)')
      .replace(/\\\\text\\{([^{}]*)\\}/g,'$1')
      .replace(/\\\\mathrm\\{([^{}]*)\\}/g,'$1')
-     .replace(/\\\\cdot/g,'·').replace(/\\\\times/g,'×').replace(/\\\\pm/g,'±')
+     .replace(/\\\\mathbb\\{([A-Za-z])\\}/g,(m,l)=>MATHBB_MAP[l]||l)
+     .replace(/\\\\pmod\\{([^{}]+)\\}/g,'(mod $1)')
+     .replace(/\\\\cdot/g,'·').replace(/\\\\times/g,'×').replace(/\\\\pm(?!od)/g,'±').replace(/\\\\mp/g,'∓')
      .replace(/\\\\(?:quad|qquad|,|;|!)/g,' ')
      .replace(/\\\\(?:left|right)/g,'');
   for(let i=0;i<3;i++) s=s.replace(/\\\\frac\\{([^{}]+)\\}\\{([^{}]+)\\}/g,'($1)/($2)');
   s=s.replace(/\\\\boxed\\{([^{}]+)\\}/g,'$1')
      .replace(/\\\\[\\[\\]()]/g,'')
-     .replace(/\\$/g,'');
+     .replace(/\\$/g,'')
+     .replace(/\\^\\{([-+0-9]+)\\}/g,(m,g)=>toSup(g))
+     .replace(/\\^([-+]?[0-9])/g,(m,g)=>toSup(g))
+     .replace(/_\\{([-+0-9]+)\\}/g,(m,g)=>toSub(g))
+     .replace(/_([-+]?[0-9])/g,(m,g)=>toSub(g))
+     .replace(/\\\\([A-Za-z]+)/g,(m,w)=>SYM_MAP[w]||m);
   return s;
 }
 
@@ -337,6 +374,7 @@ async function tutor(q, out, solved){
     +'Only the final answer is machine-checked by EulerMind.</p>'
     +'<div id="steps"></div><div id="verdict"></div>';
   const stepsEl=document.getElementById('steps');
+  const tGenStart=performance.now();
   const resp=await fetch('/tutor',{method:'POST',body:JSON.stringify({text:q})});
   if(resp.status===409){
     const e=await resp.json();
@@ -359,6 +397,8 @@ async function tutor(q, out, solved){
   const fm=full.match(FIN); const finish=fm?fm[1]:'stop';
   full=full.replace(FIN,'');
   renderStream(stepsEl, full);
+  const tGenEnd=performance.now();
+  const genMs=Math.round(tGenEnd-tGenStart);
   if(finish==='length'){
     // truncated generation: NEVER verify a clipped answer
     document.getElementById('verdict').innerHTML=
@@ -366,7 +406,8 @@ async function tutor(q, out, solved){
       +'<div class="checkline">Not checked — the generation stopped at the token limit.</div>'
       +'<div class="label Heuristic">Heuristic</div></div>'
       +'<div class="why"><b>The explanation ended before a complete answer was produced.</b> '
-      +'Nothing was checked — ask the question again.</div>';
+      +'Nothing was checked — ask the question again.</div>'
+      +'<p class="meta">Generation '+genMs+' ms</p>';
     return;
   }
   document.getElementById('verdict').innerHTML='<p class="meta">EulerMind is running the deterministic machine check…</p>';
@@ -375,14 +416,18 @@ async function tutor(q, out, solved){
   // are the model's verbatim answer — only the envelope changes.
   const tg=parseTags(full);
   const checkText = (tg.tagged && tg.answer) ? ('FINAL ANSWER: '+tg.answer) : full;
+  const tCheckStart=performance.now();
   const c=await(await fetch('/check',{method:'POST',body:JSON.stringify({question:q,answer:checkText})})).json();
+  const tCheckEnd=performance.now();
+  const checkMs=Math.round(tCheckEnd-tCheckStart), totalMs=genMs+checkMs;
   const pass=c.checked&&c.passed, fail=c.checked&&c.passed===false;
   const unchecked_shape = !c.checked && c.note && c.note.indexOf('not in the checkable families')>=0;
   let v='<div class="checkzone"><div class="zonelabel">EulerMind machine check</div>';
+  if(c.method) v+='<div class="checkline">Method: '+esc(c.method)+'</div>';
   v+='<div class="checkline '+(pass?'ok':(fail?'fail':''))+'">';
-  if(pass) v+='✓ '+esc(c.method)+' — '+esc(c.note);
-  else if(fail) v+='✗ verification FAILED — '+esc(c.note);
-  else v+='Not verified — '+esc(c.note);
+  if(pass) v+='Result: ✓ '+esc(c.note);
+  else if(fail) v+='Result: ✗ verification FAILED — '+esc(c.note);
+  else v+='Result: not verified — '+esc(c.note);
   v+='</div>';
   v+='<div class="label '+c.label+'">'+c.label+'</div>';
   v+='</div>';
@@ -393,10 +438,15 @@ async function tutor(q, out, solved){
   } else if(fail){
     v+='<div class="why"><b>Do not trust this answer.</b> EulerMind checked it and it does not survive the check — the model\\'s working contains an error.</div>';
   } else if(unchecked_shape){
-    v+='<div class="why"><b>AI explanation only.</b> This question is beyond what EulerMind can check by deterministic mathematics. The working above comes from the AI model and may contain mistakes.</div>';
+    v+='<div class="why"><b>AI explanation only.</b> This question is beyond what EulerMind can check by deterministic mathematics. The working above comes from the AI model and may contain mistakes.'
+      +(c.families&&c.families.length?'<br><br>EulerMind currently checks '+c.families.length
+        +' question families: '+esc(c.families.join(', '))+'. This question matched none of them — '
+        +'that is a routing fact, not a guess about the topic.':'')
+      +'</div>';
   } else {
     v+='<div class="why"><b>Nothing was verified.</b> EulerMind found no machine-checkable final answer in the explanation.</div>';
   }
+  v+='<p class="meta">Generation '+genMs+' ms · Verification '+checkMs+' ms · Total '+totalMs+' ms</p>';
   document.getElementById('verdict').innerHTML=v;
 }
 </script></body></html>"""
@@ -476,7 +526,11 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/check":
-            from .answer_checker import check_answer, trust_rationale
+            from .answer_checker import _CHECKERS, check_answer, trust_rationale
+            # Introspected from the real checker registry, never hand-copied,
+            # so this list can't drift from what the checker actually covers.
+            families = sorted(fn.__name__.replace("_check_", "").replace("_", " ")
+                              for fn in _CHECKERS)
             try:
                 result = check_answer(payload.get("question", ""),
                                       payload.get("answer", ""))
@@ -485,6 +539,7 @@ class Handler(BaseHTTPRequestHandler):
                 result = {"label": "Heuristic", "checked": False,
                           "passed": None, "method": None, "rationale": [],
                           "note": f"checker error (reported, not hidden): {e}"}
+            result["families"] = families
             self._json(result)
             return
 

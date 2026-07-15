@@ -1,5 +1,5 @@
 # VENDORED verbatim from the EulerMind research repo (github.com/judeszn/EulerMind)
-# at commit 4ab0ddf - only import paths adapted. Canonical source + full
+# at commit 22da74a - only import paths adapted. Canonical source + full
 # experiment history live there. Do not edit here.
 """EulerMind local demo — the judge-facing entry point.
 
@@ -226,6 +226,12 @@ button.ex{background:#fff;color:#1a1a18;border:1px solid #ccc;font-size:.8rem;pa
 .why{font-size:.82rem;color:#555;margin-top:.45rem;font-family:-apple-system,system-ui,sans-serif}
 .trusted{border:1px solid #b9d9cc;background:#f2fbf7;border-radius:10px;padding:.5rem .8rem;margin:.5rem 0}
 .tline{font-size:.88rem;color:#0f6e56;line-height:1.75;font-family:-apple-system,system-ui,sans-serif}
+.mfrac{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;vertical-align:middle;margin:0 .18em;line-height:1.15}
+.mfrac .mnum{padding:0 .22em .07em;border-bottom:1.5px solid currentColor}
+.mfrac .mden{padding:.07em .22em 0}
+.msqrt{display:inline-flex;align-items:flex-start;white-space:nowrap;margin:0 .05em}
+.msqrt .mrad{margin-right:.05em}
+.msqrt .mrady{border-top:1.5px solid currentColor;padding:0 .18em 0 .1em}
 .meta{color:#888;font-size:.8rem}</style></head><body>
 <h1>EulerMind</h1>
 <p class="sub">The offline maths tutor that knows the difference between what it has proved and what it has only inferred</p>
@@ -256,7 +262,7 @@ async function go(){
   if(d.domain) h+='<p class="meta">certified lane · '+d.domain+'</p>';
   h+='<div>'+d.stages.map(s=>'<div class="stage '+(s.ok?'ok':'fail')+'">'+(s.ok?'✓':'✗')+' '+s.stage+' <span class="meta">'+s.note+'</span></div>').join('')+'</div>';
   h+='<div class="label '+d.label+'">'+d.label+'</div>';
-  h+='<div class="answer">'+esc(d.answer)+'</div>';
+  h+='<div class="answer">'+mathHTML(d.answer)+'</div>';
   if(d.cert_id) h+='<p class="meta">Certificate ID <code>'+esc(d.cert_id)+'</code> — sha256 of the certificate content, first 12 hex digits</p>';
   h+='<p class="meta">'+d.ms+' ms, fully local</p>';
   out.innerHTML=h;
@@ -306,7 +312,8 @@ function deLatex(s){
      .replace(/\\\\pmod\\{([^{}]+)\\}/g,'(mod $1)')
      .replace(/\\\\cdot/g,'·').replace(/\\\\times/g,'×').replace(/\\\\pm(?!od)/g,'±').replace(/\\\\mp/g,'∓')
      .replace(/\\\\(?:quad|qquad|,|;|!)/g,' ')
-     .replace(/\\\\(?:left|right)/g,'');
+     .replace(/\\\\(?:left|right)/g,'')
+     .replace(/<=/g,'≤').replace(/>=/g,'≥').replace(/!=/g,'≠');
   for(let i=0;i<3;i++) s=s.replace(/\\\\frac\\{([^{}]+)\\}\\{([^{}]+)\\}/g,'($1)/($2)');
   s=s.replace(/\\\\boxed\\{([^{}]+)\\}/g,'$1')
      .replace(/\\\\[\\[\\]()]/g,'')
@@ -317,6 +324,79 @@ function deLatex(s){
      .replace(/_([-+]?[0-9])/g,(m,g)=>toSub(g))
      .replace(/\\\\([A-Za-z]+)/g,(m,w)=>SYM_MAP[w]||m);
   return s;
+}
+
+// ---- new: stacked-fraction / radical renderer (this sprint) ----
+function fracHTML(numHtml,denHtml){
+  return '<span class="mfrac"><span class="mnum">'+numHtml+'</span><span class="mden">'+denHtml+'</span></span>';
+}
+function sqrtHTML(innerHtml){
+  return '<span class="msqrt"><span class="mrad">√</span><span class="mrady">'+innerHtml+'</span></span>';
+}
+
+// Private-Use-Area sentinels built by code (never literal chars in source —
+// invisible characters do not survive editing). They cannot occur in model
+// text, so they safely fence off already-rendered HTML fragments.
+const SLOT_OPEN=String.fromCharCode(0xE000), SLOT_CLOSE=String.fromCharCode(0xE001);
+const SLOT_RE=new RegExp(SLOT_OPEN+'(\\\\d+)'+SLOT_CLOSE,'g');
+
+// Extracts fractions/roots from `raw` into `slots` (SHARED across the whole
+// recursive call tree — a fraction's numerator may itself contain another
+// fraction found by a LATER pass, e.g. \\sqrt{\\frac{a}{b}}: the \\frac pass
+// runs first and stores its placeholder INSIDE the \\sqrt argument; a fresh
+// slots array per recursive call would orphan that reference, so every
+// nested render() call pushes into the one array the top-level mathHTML()
+// created). Returns text that may still contain placeholder tokens —
+// resolved once, at the end, by resolvePlaceholders().
+function render(raw, slots){
+  if(raw==null) return '';
+  const put=html=>{slots.push(html); return SLOT_OPEN+(slots.length-1)+SLOT_CLOSE;};
+  let s=raw;
+
+  // \\frac{A}{B} in native LaTeX form, up to 3 passes for nesting
+  for(let i=0;i<3;i++){
+    s=s.replace(/\\\\frac\\{([^{}]*(?:\\{[^{}]*\\}[^{}]*)*)\\}\\{([^{}]*(?:\\{[^{}]*\\}[^{}]*)*)\\}/g,
+      (m,a,b)=>put(fracHTML(render(a,slots),render(b,slots))));
+  }
+  // \\sqrt{A} native LaTeX form (recurse into the radicand)
+  s=s.replace(/\\\\sqrt\\{([^{}]+)\\}/g,(m,a)=>put(sqrtHTML(render(a,slots))));
+  // bare sqrt(A) function-call form (one level of nested parens tolerated)
+  s=s.replace(/(?<!\\w)sqrt\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)/g,
+    (m,a)=>put(sqrtHTML(render(a,slots))));
+  // √(A) already-unicode form (from a prior partial normalization, or the
+  // model itself), one level of nested parens tolerated
+  s=s.replace(/√\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)/g,
+    (m,a)=>put(sqrtHTML(render(a,slots))));
+  // already-parenthesised fraction form (A)/(B) — one nested-paren level
+  s=s.replace(/\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)\\s*\\/\\s*\\(([^()]*(?:\\([^()]*\\)[^()]*)*)\\)/g,
+    (m,a,b)=>put(fracHTML(render(a,slots),render(b,slots))));
+  // bare numeric fraction: -1/2, 22/7 ... never variables/units (keeps
+  // "km/h", "and/or" untouched)
+  s=s.replace(/(-?\\d+(?:\\.\\d+)?)\\s*\\/\\s*(-?\\d+(?:\\.\\d+)?)(?!\\d)/g,
+    (m,a,b)=>put(fracHTML(esc(a),esc(b))));
+
+  // everything else: symbol normalization, then HTML-escape the plain text.
+  // Any placeholder tokens already in `s` pass through both steps untouched
+  // (verified: neither deLatex's regexes nor esc()'s &<> escaping can match
+  // a PUA codepoint or bracket one in valid LaTeX/HTML syntax).
+  return esc(deLatex(s));
+}
+
+// Resolves placeholder tokens iteratively. A placeholder may expand to HTML
+// that itself contains placeholders (fraction-in-fraction), so loop until
+// none remain — never recurse into a shared /g regex (its lastIndex state
+// diverges across JS engines). Bounded guard against pathological input.
+function resolvePlaceholders(s, slots){
+  for(var guard=0; guard<10000 && s.indexOf(SLOT_OPEN)>=0; guard++){
+    s=s.replace(SLOT_RE, function(m,i){return slots[Number(i)];});
+  }
+  return s;
+}
+
+function mathHTML(raw){
+  if(!raw) return '';
+  const slots=[];
+  return resolvePlaceholders(render(raw, slots), slots);
 }
 
 // EulerMind decides the section names and order — the model only fills slots.
@@ -368,12 +448,12 @@ function renderStream(el, text){
   else { const f=segmentSections(text); secs=f.secs; answer=f.answer; }
   let h='<div class="modelzone"><div class="zonelabel">Model’s explanation</div>';
   secs.forEach(s=>{ h+='<div class="step"><span class="stepchip">'+esc(s.title||'Reasoning')
-    +'</span><div class="stepbody">'+esc(deLatex(s.body))+'</div></div>'; });
+    +'</span><div class="stepbody">'+mathHTML(s.body)+'</div></div>'; });
   if(!secs.length) h+='<div class="step"><span class="stepchip">Thinking</span>'
-    +'<div class="stepbody">'+esc(deLatex(text))+'</div></div>';
+    +'<div class="stepbody">'+mathHTML(text)+'</div></div>';
   h+='</div>';
   if(answer) h+='<div class="answerbox"><div class="zonelabel">Answer</div>'
-    +'<div class="answerval">'+esc(deLatex(answer))+'</div></div>';
+    +'<div class="answerval">'+mathHTML(answer)+'</div></div>';
   el.innerHTML=h;
 }
 async function tutor(q, out, solved){

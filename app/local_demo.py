@@ -1,5 +1,5 @@
 # VENDORED verbatim from the EulerMind research repo (github.com/judeszn/EulerMind)
-# at commit 22da74a - only import paths adapted. Canonical source + full
+# at commit a49cb79 - only import paths adapted. Canonical source + full
 # experiment history live there. Do not edit here.
 """EulerMind local demo — the judge-facing entry point.
 
@@ -196,6 +196,39 @@ def _examples() -> list[dict]:
             {"name": "Lagos workshop (certified)", "text": _LAGOS}]
 
 
+# Plain-English display names for the checker registry. Introspected from
+# _CHECKERS at render time (never hand-copied), so the count and the list a
+# judge reads are the checkers that actually exist. An unmapped new family
+# degrades to its own name rather than vanishing from the list.
+_FAMILY_LABELS = {
+    "arithmetic": "Arithmetic",
+    "average": "Averages",
+    "coordinate_geometry": "Coordinate geometry",
+    "derivative": "Derivatives",
+    "expand": "Expanding, factorising and simplifying",
+    "find_constants": "Finding unknown constants",
+    "given_values": "Substituting given values",
+    "inequality": "Inequalities",
+    "modular": "Modular arithmetic",
+    "percentage": "Percentages",
+    "rounding": "Rounding and significant figures",
+    "simultaneous": "Simultaneous equations",
+    "solve_equation": "Equations (linear and quadratic)",
+    "standard_form": "Standard form",
+    "subject_of_formula": "Subject of a formula",
+    "unit_conversion": "Unit conversion",
+}
+
+
+def _families() -> list[str]:
+    from .answer_checker import _CHECKERS
+    names = []
+    for fn in _CHECKERS:
+        key = fn.__name__.replace("_check_", "")
+        names.append(_FAMILY_LABELS.get(key, key.replace("_", " ").capitalize()))
+    return sorted(names)
+
+
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <title>EulerMind</title><style>
 body{font-family:-apple-system,system-ui,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;color:#1a1a18;background:#faf9f5}
@@ -232,26 +265,129 @@ button.ex{background:#fff;color:#1a1a18;border:1px solid #ccc;font-size:.8rem;pa
 .msqrt{display:inline-flex;align-items:flex-start;white-space:nowrap;margin:0 .05em}
 .msqrt .mrad{margin-right:.05em}
 .msqrt .mrady{border-top:1.5px solid currentColor;padding:0 .18em 0 .1em}
+.tbadge{display:inline-block;border-radius:8px;padding:.4rem 1rem;font-weight:800;font-size:1.05rem;letter-spacing:.04em;margin:.7rem 0 .2rem}
+.tdesc{font-size:.9rem;color:#444;margin-bottom:.5rem;max-width:46rem}
+.t-proved{background:#0f6e56;color:#fff}
+.t-checked{background:#1b62b3;color:#fff}
+.t-aiexp{background:#f5e2bf;color:#5a4415;border:1px solid #dcc189}
+.t-noans{background:#ece9e2;color:#4a4438;border:1px solid #d3cec2}
+.t-failed{background:#a32d2d;color:#fff}
+.k.t-proved,.k.t-checked,.k.t-failed{color:#fff}
+.langsw{margin-left:.8rem}
+.lang{background:#fff;color:#5a5344;border:1px solid #ccc;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;margin:0 .2rem 0 0;cursor:pointer}
+.lang.on{background:#1a1a18;color:#fff;border-color:#1a1a18}
+.supported{margin:1.2rem 0;border:1px solid #e6e3db;border-radius:10px;padding:.6rem .9rem;background:#fff}
+.supported summary{cursor:pointer;font-size:.9rem;color:#3a352c}
+.famlist{margin-top:.6rem}
+.fam{display:inline-block;background:#f0ede4;color:#4a4438;border-radius:6px;padding:2px 9px;font-size:.78rem;margin:0 .3rem .35rem 0}
 .meta{color:#888;font-size:.8rem}</style></head><body>
 <h1>EulerMind</h1>
 <p class="sub">The offline maths tutor that knows the difference between what it has proved and what it has only inferred</p>
-<p class="sub2">Every answer clearly tells you whether it was mathematically verified or is an AI explanation.</p>
+<p class="sub2">Every answer tells you whether EulerMind checked it — or couldn't.</p>
 <div class="badges"><span>✓ Works without internet</span><span>✓ Runs on ordinary school laptops</span><span>✓ Checks its answers — and says when it can't</span></div>
-<div class="trustkey">
-<span class="k Verified">Verified</span> independently certified ·
-<span class="k Derived">Derived</span> machine-checked ·
-<span class="k Heuristic">Heuristic</span> AI explanation only ·
-<span class="k Open">Open</span> could not answer — says so</div>
-<p class="meta">Examples: <span id="exbtns"></span></p>
-<textarea id="q" placeholder="Paste any secondary-school maths question (WAEC/SSCE) — equations, factorising, differentiation… or a resource-allocation problem for the certified lane"></textarea><br>
-<button onclick="go()">Solve</button>
+<div class="trustkey" id="trustkey"></div>
+<p class="meta"><span id="exlabel">Examples</span>: <span id="exbtns"></span></p>
+<textarea id="q" placeholder="Paste any secondary-school maths question (WAEC/SSCE) — equations, factorising, differentiation… or a business planning question"></textarea><br>
+<button onclick="go()" id="solvebtn">Solve</button>
+<span class="langsw" id="langsw"></span>
 <div id="out"></div>
+<details class="supported" id="supported"></details>
 <script>
 const EXAMPLES = __EXAMPLES__;
+const FAMILIES = __FAMILIES__;
 const exb = document.getElementById('exbtns');
 EXAMPLES.forEach(e=>{const b=document.createElement('button');b.className='ex';b.textContent=e.name;
   b.onclick=()=>{document.getElementById('q').value=e.text;};exb.appendChild(b);});
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+// ---------------------------------------------------------------- i18n
+// UI labels only — two languages, LOCKED: English (default) + Nigerian
+// Pidgin (strings specified by the team, not machine-drafted). Yoruba was
+// deliberately dropped for the submission: Pidgin carries the African-first
+// story across Nigeria/Ghana/Cameroon with zero bad-translation risk.
+// Mathematics, equations, numbers and the model's own explanation are
+// NEVER translated.
+const I18N={
+ en:{name:'English',
+  solve:'Solve', examples:'Examples', supported:'Supported question types',
+  supportedNote:'kinds of mathematics question currently checked',
+  machineCheck:'Machine check', method:'Method', result:'Result',
+  modelExplanation:'Model’s explanation', answer:'Answer',
+  whyTrusted:'Why this answer is trusted',
+  gen:'Generation time', ver:'Verification time', total:'Total time',
+  PROVED:'PROVED', PROVED_d:'Checked two independent ways. Both methods agree.',
+  CHECKED:'CHECKED', CHECKED_d:'EulerMind checked this answer using mathematics.',
+  AIEXP:'AI EXPLANATION', AIEXP_d:'This answer was generated by AI and was not mathematically checked. Read carefully.',
+  NOANS:'COULDN’T ANSWER', NOANS_d:'EulerMind could not solve this question. Rather than guessing, it tells you honestly.',
+  FAILED:'VERIFICATION FAILED', FAILED_d:'EulerMind checked the answer and found a mathematical mistake. Do not trust this answer.'},
+ pcm:{name:'Pidgin',
+  solve:'Solve am', examples:'Example dem', supported:'Question wey EulerMind fit check',
+  supportedNote:'kind maths question wey e dey check now',
+  machineCheck:'Machine Check', method:'How e take check am', result:'Wetin e find',
+  modelExplanation:'Wetin di AI talk', answer:'Answer',
+  whyTrusted:'Why you fit trust dis answer',
+  gen:'Time wey AI take solve', ver:'Time wey EulerMind take check am', total:'Total Time',
+  PROVED:'DON PROVE AM', PROVED_d:'Dem check am two different ways. Di two agree.',
+  CHECKED:'DON CHECK AM', CHECKED_d:'EulerMind check dis answer with mathematics.',
+  AIEXP:'AI EXPLAIN AM', AIEXP_d:'Na di AI write dis one, EulerMind no check am with mathematics. Read am well well.',
+  NOANS:'E NO FIT SOLVE AM', NOANS_d:'EulerMind no fit solve dis question. Instead make e guess, e tell you true true.',
+  FAILED:'CHECK FAIL', FAILED_d:'EulerMind check di answer, e find mistake for inside. No trust dis answer.'}
+};
+let LANG='en';
+function t(k){ return (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k; }
+
+// The four internal labels (Verified / Derived / Heuristic / Open) are the
+// EVIDENCE taxonomy — unchanged server-side, in scoreboard.md and the CI
+// artifacts. Only the DISPLAY wording changes here. PROVED and CHECKED stay
+// distinct on purpose: PROVED means a certificate re-proved by a second,
+// independently-written checker using a different theorem; CHECKED means one
+// deterministic check. Collapsing them would overclaim.
+function trustDisplay(label, failed){
+  if(failed) return {k:'FAILED', cls:'t-failed'};
+  if(label==='Verified') return {k:'PROVED', cls:'t-proved'};
+  if(label==='Derived')  return {k:'CHECKED', cls:'t-checked'};
+  if(label==='Open')     return {k:'NOANS', cls:'t-noans'};
+  return {k:'AIEXP', cls:'t-aiexp'};
+}
+function trustBadge(label, failed){
+  const d=trustDisplay(label, failed);
+  return '<div class="tbadge '+d.cls+'">'+esc(t(d.k))+'</div>'
+        +'<div class="tdesc">'+esc(t(d.k+'_d'))+'</div>';
+}
+// Checker notes are engineering strings. Concrete ones (residuals, sample
+// points) are already plain and stay verbatim — they are the evidence.
+// Only the jargon phrasings are rewritten for a 15-year-old.
+function plainNote(note){
+  if(!note) return '';
+  if(note.indexOf('not in the checkable families')>=0)
+    return 'EulerMind can explain this question but cannot mathematically check it.';
+  if(note.indexOf('no machine-readable final answer')>=0)
+    return 'EulerMind could not find a clear final answer to check.';
+  if(note.indexOf('check not completable')>=0)
+    return 'EulerMind could not finish checking this answer, so it will not vouch for it.';
+  return note;
+}
+// Paints every localised label. Re-run on language change; it never touches
+// answers already on screen (mathematics is not translated).
+function paintChrome(){
+  document.getElementById('solvebtn').textContent=t('solve');
+  document.getElementById('exlabel').textContent=t('examples');
+  document.getElementById('trustkey').innerHTML=
+    ['PROVED','CHECKED','AIEXP','NOANS'].map(k=>
+      '<span class="k '+trustDisplay(
+        k==='PROVED'?'Verified':k==='CHECKED'?'Derived':k==='NOANS'?'Open':'Heuristic',
+        false).cls+'">'+esc(t(k))+'</span> '+esc(t(k+'_d'))).join('<br>');
+  document.getElementById('supported').innerHTML=
+    '<summary>'+esc(t('supported'))+' — <b>'+FAMILIES.length+'</b> '
+    +esc(t('supportedNote'))+'</summary><div class="famlist">'
+    +FAMILIES.map(f=>'<span class="fam">'+esc(f)+'</span>').join('')+'</div>';
+  document.getElementById('langsw').innerHTML=
+    Object.keys(I18N).map(k=>'<button class="lang'+(k===LANG?' on':'')
+      +'" onclick="setLang(\\''+k+'\\')">'+esc(I18N[k].name)+'</button>').join('');
+}
+function setLang(k){ LANG=k; paintChrome(); }
+paintChrome();
+
 async function go(){
   const q=document.getElementById('q').value;
   const out=document.getElementById('out'); out.innerHTML='<p class="meta">solving…</p>';
@@ -261,7 +397,7 @@ async function go(){
   let h='';
   if(d.domain) h+='<p class="meta">certified lane · '+d.domain+'</p>';
   h+='<div>'+d.stages.map(s=>'<div class="stage '+(s.ok?'ok':'fail')+'">'+(s.ok?'✓':'✗')+' '+s.stage+' <span class="meta">'+s.note+'</span></div>').join('')+'</div>';
-  h+='<div class="label '+d.label+'">'+d.label+'</div>';
+  h+=trustBadge(d.label, false);
   h+='<div class="answer">'+mathHTML(d.answer)+'</div>';
   if(d.cert_id) h+='<p class="meta">Certificate ID <code>'+esc(d.cert_id)+'</code> — sha256 of the certificate content, first 12 hex digits</p>';
   h+='<p class="meta">'+d.ms+' ms, fully local</p>';
@@ -446,7 +582,7 @@ function renderStream(el, text){
   const tagged = parseTags(text);
   if(tagged.tagged){ secs=tagged.secs; answer=tagged.answer; }
   else { const f=segmentSections(text); secs=f.secs; answer=f.answer; }
-  let h='<div class="modelzone"><div class="zonelabel">Model’s explanation</div>';
+  let h='<div class="modelzone"><div class="zonelabel">'+esc(t('modelExplanation'))+'</div>';
   secs.forEach(s=>{ h+='<div class="step"><span class="stepchip">'+esc(s.title||'Reasoning')
     +'</span><div class="stepbody">'+mathHTML(s.body)+'</div></div>'; });
   if(!secs.length) h+='<div class="step"><span class="stepchip">Thinking</span>'
@@ -457,7 +593,7 @@ function renderStream(el, text){
   el.innerHTML=h;
 }
 async function tutor(q, out, solved){
-  out.innerHTML='<p class="meta">tutor lane · local model, streaming — fully offline</p>'
+  out.innerHTML='<p class="meta">local AI model — fully offline</p>'
     +'<p class="legend">The sections below are the model\\'s explanation. '
     +'Only the final answer is machine-checked by EulerMind.</p>'
     +'<div id="steps"></div><div id="verdict"></div>';
@@ -490,12 +626,12 @@ async function tutor(q, out, solved){
   if(finish==='length'){
     // truncated generation: NEVER verify a clipped answer
     document.getElementById('verdict').innerHTML=
-      '<div class="checkzone"><div class="zonelabel">EulerMind machine check</div>'
-      +'<div class="checkline">Not checked — the generation stopped at the token limit.</div>'
-      +'<div class="label Heuristic">Heuristic</div></div>'
-      +'<div class="why"><b>The explanation ended before a complete answer was produced.</b> '
-      +'Nothing was checked — ask the question again.</div>'
-      +'<p class="meta">Generation '+genMs+' ms</p>';
+      '<div class="checkzone"><div class="zonelabel">'+esc(t('machineCheck'))+'</div>'
+      +'<div class="checkline">'+esc(t('result'))
+      +': the explanation stopped before a complete answer, so nothing was checked.</div></div>'
+      +trustBadge('Heuristic', false)
+      +'<div class="why">Ask the question again.</div>'
+      +'<p class="meta">'+esc(t('gen'))+' '+genMs+' ms</p>';
     return;
   }
   document.getElementById('verdict').innerHTML='<p class="meta">EulerMind is running the deterministic machine check…</p>';
@@ -510,31 +646,23 @@ async function tutor(q, out, solved){
   const checkMs=Math.round(tCheckEnd-tCheckStart), totalMs=genMs+checkMs;
   const pass=c.checked&&c.passed, fail=c.checked&&c.passed===false;
   const unchecked_shape = !c.checked && c.note && c.note.indexOf('not in the checkable families')>=0;
-  let v='<div class="checkzone"><div class="zonelabel">EulerMind machine check</div>';
-  if(c.method) v+='<div class="checkline">Method: '+esc(c.method)+'</div>';
+  let v='<div class="checkzone"><div class="zonelabel">'+esc(t('machineCheck'))+'</div>';
+  if(c.method) v+='<div class="checkline">'+esc(t('method'))+': '+esc(c.method)+'</div>';
   v+='<div class="checkline '+(pass?'ok':(fail?'fail':''))+'">';
-  if(pass) v+='Result: ✓ '+esc(c.note);
-  else if(fail) v+='Result: ✗ verification FAILED — '+esc(c.note);
-  else v+='Result: not verified — '+esc(c.note);
-  v+='</div>';
-  v+='<div class="label '+c.label+'">'+c.label+'</div>';
-  v+='</div>';
+  v+=esc(t('result'))+': '+(pass?'✓ ':(fail?'✗ ':''))+esc(plainNote(c.note));
+  v+='</div></div>';
+  v+=trustBadge(c.label, fail);
   if(pass && c.rationale && c.rationale.length){
-    v+='<div class="trusted"><div class="zonelabel">Why this answer is trusted</div>';
+    v+='<div class="trusted"><div class="zonelabel">'+esc(t('whyTrusted'))+'</div>';
     c.rationale.forEach(b=>{ v+='<div class="tline">✓ '+esc(b)+'</div>'; });
     v+='</div>';
-  } else if(fail){
-    v+='<div class="why"><b>Do not trust this answer.</b> EulerMind checked it and it does not survive the check — the model\\'s working contains an error.</div>';
-  } else if(unchecked_shape){
-    v+='<div class="why"><b>AI explanation only.</b> This question is beyond what EulerMind can check by deterministic mathematics. The explanation above was generated by the AI model and has not been machine-checked — it may contain mistakes.'
-      +(c.families&&c.families.length?'<br><br>EulerMind currently checks '+c.families.length
-        +' question families: '+esc(c.families.join(', '))+'. This question matched none of them — '
-        +'that is a routing fact, not a guess about the topic.':'')
-      +'</div>';
-  } else {
-    v+='<div class="why"><b>Nothing was verified.</b> EulerMind found no machine-checkable final answer in the explanation.</div>';
+  } else if(unchecked_shape && c.families && c.families.length){
+    v+='<div class="why">EulerMind checks '+c.families.length+' kinds of question. '
+      +'This one matched none of them — that is a fact about what it covers, '
+      +'not a guess about the topic.</div>';
   }
-  v+='<p class="meta">Generation '+genMs+' ms · Verification '+checkMs+' ms · Total '+totalMs+' ms</p>';
+  v+='<p class="meta">'+esc(t('gen'))+' '+genMs+' ms · '+esc(t('ver'))+' '+checkMs
+    +' ms · '+esc(t('total'))+' '+totalMs+' ms</p>';
   document.getElementById('verdict').innerHTML=v;
 }
 </script></body></html>"""
@@ -545,7 +673,8 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        page = PAGE.replace("__EXAMPLES__", json.dumps(_examples()))
+        page = (PAGE.replace("__EXAMPLES__", json.dumps(_examples()))
+                    .replace("__FAMILIES__", json.dumps(_families())))
         body = page.encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")

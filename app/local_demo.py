@@ -1,5 +1,5 @@
 # VENDORED verbatim from the EulerMind research repo (github.com/judeszn/EulerMind)
-# at commit a49cb79 - only import paths adapted. Canonical source + full
+# at commit dfc1a91 - only import paths adapted. Canonical source + full
 # experiment history live there. Do not edit here.
 """EulerMind local demo — the judge-facing entry point.
 
@@ -608,9 +608,9 @@ async function tutor(q, out, solved){
   }
   if(resp.status===503){
     const e=await resp.json();
-    stepsEl.innerHTML='<div class="checkzone"><div class="zonelabel">Tutor lane offline</div>'
-      +'<div class="checkline fail">'+esc(e.error)+'</div>'
-      +'<div class="why">The certified lane still works without it.</div></div>';
+    stepsEl.innerHTML='<div class="checkzone"><div class="zonelabel">AI explanations are optional — and off right now</div>'
+      +'<div class="checkline"><b>'+esc(e.error)+'</b></div>'
+      +'<div class="why">'+esc(e.hint||'')+'</div></div>';
     return;
   }
   const reader=resp.body.getReader(); const dec=new TextDecoder(); let full='';
@@ -720,8 +720,13 @@ class Handler(BaseHTTPRequestHandler):
                 return
             server = discover_server()
             if server is None:
-                self._json({"error": "no local model server. Start one with: "
-                            "llama-server -m model/<model>.gguf --port 8080"}, 503)
+                self._json({"error": "The AI explanation model is not running.",
+                            "hint": "This is optional. Certified mathematical "
+                            "verification still works without it — try the "
+                            "Lagos workshop example. To turn on offline AI "
+                            "explanations, run  ./run_demo.sh  (or start the "
+                            "model yourself: llama-server -m "
+                            "model/<your-model>.gguf --port 8080)."}, 503)
                 return
             base, model = server
             self.send_response(200)

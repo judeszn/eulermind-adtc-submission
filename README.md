@@ -5,7 +5,15 @@
 **Peak RAM:** 1.7 GB measured · **Fully offline** · CPU-only
 
 An offline maths tutor that checks its own answers before asking
-students to trust them. Two lanes, one honesty rule:
+students to trust them. Two lanes, one honesty rule.
+
+**The two lanes are independent by design — this is the architecture, not a
+caveat.** The certified mathematical engine (pure Python, no model, no
+download) runs the instant you clone the repo. The AI explanation lane is an
+*optional* add-on that needs a local GGUF model. If the model isn't present
+or isn't running, EulerMind degrades gracefully: certified verification keeps
+working and the UI says so plainly — it never errors out or fabricates an
+answer.
 
 - **Tutor lane** (any secondary-school maths question): the local model
   explains step by step; a deterministic checker then re-derives the final

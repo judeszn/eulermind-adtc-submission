@@ -4,3 +4,6 @@ model/*
 !model/.gitkeep
 submission_local*.json
 __pycache__/
+
+# Claude Code local workspace settings (machine-specific paths)
+.claude/settings.local.json

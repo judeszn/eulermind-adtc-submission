@@ -5,7 +5,7 @@
 #   ./run_demo.sh check      preflight only (no servers started)
 #
 # Judge-facing promise: no cloud, no internet, no Ollama. Everything runs
-# from the GGUF under models/ through llama-server on 127.0.0.1.
+# from the GGUF under model/ through llama-server on 127.0.0.1.
 
 set -euo pipefail
 
@@ -21,8 +21,19 @@ fail() { printf '\033[31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 # ---------------------------------------------------------------- preflight
 command -v llama-server >/dev/null 2>&1 \
   || fail "llama-server not found. Install llama.cpp first:
-  macOS:  brew install llama.cpp
-  other:  see competition/PRODUCTION_SETUP.md"
+  macOS:    brew install llama.cpp
+  Linux:    brew install llama.cpp   (Homebrew works on Linux too), OR:
+              sudo apt install -y build-essential cmake git   # Debian/Ubuntu
+              git clone https://github.com/ggml-org/llama.cpp
+              cmake -B llama.cpp/build -S llama.cpp -DCMAKE_BUILD_TYPE=Release
+              cmake --build llama.cpp/build --config Release -j
+              export PATH=\"\$PWD/llama.cpp/build/bin:\$PATH\"
+  Windows:  install WSL2 and follow the Linux steps above (this also
+            matches the x86 Linux environment the ADTC profiler audits
+            on), OR download a prebuilt llama-*-bin-win-*.zip from
+            https://github.com/ggml-org/llama.cpp/releases and add its
+            folder to PATH
+  Then re-run: ./run_demo.sh"
 
 command -v python3 >/dev/null 2>&1 || fail "python3 not found"
 

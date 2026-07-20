@@ -22,8 +22,11 @@ students to trust them. Two lanes, one honesty rule:
 ## Try it in 60 seconds (no installs, no internet, no GPU)
 
 ```bash
-./run_demo.sh                    # model + UI (needs llama.cpp + the GGUF:
-                                 #   brew install llama.cpp && ./download_model.sh)
+./download_model.sh              # one-time, ~1.0 GB, works with curl or wget
+./run_demo.sh                    # model + UI — installs nothing itself; if
+                                 # llama-server is missing it prints the exact
+                                 # install command for macOS, Linux, or
+                                 # Windows (WSL2) and stops
 python3 -m app.local_demo        # UI only — certified lane works with no model
 ```
 
